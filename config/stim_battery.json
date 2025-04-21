@@ -1,0 +1,25 @@
+{
+    "coha_fic":{
+        "items":[
+            "/data/coha_fic/coha_words_fic_1820.csv",
+            "/data/coha_fic/coha_words_fic_1830.csv",
+            "/data/coha_fic/coha_words_fic_1840.csv",
+            "/data/coha_fic/coha_words_fic_1850.csv",
+            "/data/coha_fic/coha_words_fic_1860.csv",
+            "/data/coha_fic/coha_words_fic_1870.csv",
+            "/data/coha_fic/coha_words_fic_1880.csv",
+            "/data/coha_fic/coha_words_fic_1890.csv",
+            "/data/coha_fic/coha_words_fic_1900.csv",
+            "/data/coha_fic/coha_words_fic_1910.csv",
+            "/data/coha_fic/coha_words_fic_1920.csv",
+            "/data/coha_fic/coha_words_fic_1930.csv",
+            "/data/coha_fic/coha_words_fic_1940.csv",
+            "/data/coha_fic/coha_words_fic_1950.csv",
+            "/data/coha_fic/coha_words_fic_1960.csv",
+            "/data/coha_fic/coha_words_fic_1970.csv",
+            "/data/coha_fic/coha_words_fic_1980.csv",
+            "/data/coha_fic/coha_words_fic_1990.csv",
+            "/data/coha_fic/coha_words_fic_2000.csv"
+        ]
+    }
+}
