@@ -1,0 +1,584 @@
+---
+title: "word_sense_gmc"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-09-11"
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(panelvar)
+library(plm)
+library(glue)
+library(ggplot2)
+library(tseries)
+library(tidyr)
+library(urca)
+library(vars)
+library(aod)
+library(zoo)
+library(panelvar)
+
+
+```
+
+
+```{r}
+source('GMC.R')
+source('Equality.R')
+```
+# Word Sense GMC Application
+
+## Preprocessing
+
+```{r}
+
+centrality_measures = c('betweenness', 'closeness', 'clusterrank',
+    'constraint', 'degree', 'diffusion','dmnc',
+    'hubs', 'laplacian', 'lobby', 'mnc',
+    'pagerank', 'topocoefficient', 'transitivity')
+
+frequency_measures = c('zipf')
+
+
+sd_measures = c('spectral_diversity', 'nonzero_eigenvalues', 'entropy', 'condition_number')
+
+antonyms_df = read.csv("data/antonyms_with_network_properties.csv")
+metrics_df = read.csv("data/words_metrics_long_df.csv")
+
+set.seed(42)  # Set seed for reproducibility
+#jitter_amount <- runif(nrow(metrics_df), min = -0.05, max = 0.05)
+#metrics_df$nonzero_eigenvalues <- metrics_df$nonzero_eigenvalues + jitter_amount
+
+random_word_order <- metrics_df %>%
+  distinct(word) %>%
+  mutate(rand = runif(n())) %>% 
+  arrange(rand) %>%
+  dplyr::select(word) 
+
+# 3. Join this random order back to 'metrics_df' and arrange by 'rand'
+metrics_df_random <- metrics_df %>%
+  inner_join(random_word_order %>% mutate(rand_order = row_number()), by = "word") %>%
+  arrange(rand_order) %>%
+  dplyr::select(-rand_order)
+
+# Now 'metrics_df_random' has all rows for each word in a single, consistent random position
+
+# ---- If you need a quick check:
+head(metrics_df_random)
+
+# 4. Create decade-based column dictionaries for original vs. randomized data
+unique_decades <- unique(metrics_df$decade)
+column_dicts_set <- list()
+
+for (decade in unique_decades) {
+  subset_df <- metrics_df[metrics_df$decade == decade, ]
+  column_dict <- lapply(subset_df, as.list)
+  names(column_dict) <- names(subset_df)
+  column_dicts_set[[paste0("column_dict_", decade)]] <- column_dict
+}
+
+unique_decades_random <- unique(metrics_df_random$decade)
+column_dicts_random_set <- list()
+
+for (decade in unique_decades_random) {
+  subset_df_random <- metrics_df_random[metrics_df_random$decade == decade, ]
+  column_dict_random <- lapply(subset_df_random, as.list)
+  names(column_dict_random) <- names(subset_df_random)
+  column_dicts_random_set[[paste0("column_dict_", decade)]] <- column_dict_random
+}
+
+# 5. Inspect the results
+str(column_dicts_set)
+str(column_dicts_random_set)
+
+```
+###sanity checks
+
+```{r}
+
+pos_able <- which(column_dicts_random_set$column_dict_1820$word == "big")
+
+# 2. Extract the corresponding values for dmnc and closeness
+val_dmnc <- column_dicts_random_set$column_dict_1820$dmnc[[pos_able]]
+val_closeness <- column_dicts_random_set$column_dict_1820$closeness[[pos_able]]
+
+# 3. Print the index position to confirm both are the same
+cat("Index of 'able' in 1820 word list:", pos_able, "\n")
+cat("dmnc value at that index:        ", val_dmnc, "\n")
+cat("closeness value at that index:   ", val_closeness, "\n")
+
+```
+
+```{r}
+# Extract the dmnc and closeness lists
+dmnc_1820 <- column_dicts_random_set$column_dict_1820$dmnc
+closeness_1820 <- column_dicts_random_set$column_dict_1820$closeness
+
+# Flatten from list to vector
+dmnc_vec_1820 <- unlist(dmnc_1820)
+closeness_vec_1820 <- unlist(closeness_1820)
+
+# Print the first 5 values from each (now they're atomic vectors)
+cat("First 5 dmnc values in 1820:\n", dmnc_vec_1820[1:5], "\n")
+cat("First 5 closeness values in 1820:\n", closeness_vec_1820[1:5], "\n")
+
+```
+
+```{r}
+
+
+pos_able <- which(column_dicts_set$column_dict_1820$word == "big")
+
+# 2. Extract the corresponding values for dmnc and closeness
+val_dmnc <- column_dicts_set$column_dict_1820$dmnc[[pos_able]]
+val_closeness <- column_dicts_set$column_dict_1820$closeness[[pos_able]]
+
+# 3. Print the index position to confirm both are the same
+cat("Index of 'able' in 1820 word list:", pos_able, "\n")
+cat("dmnc value at that index:        ", val_dmnc, "\n")
+cat("closeness value at that index:   ", val_closeness, "\n")
+```
+
+```{r}
+
+
+gmcPvalue(unlist(column_dicts_set$column_dict_1850$laplacian),unlist(column_dicts_set$column_dict_2000$spectral_diversity), 0)
+
+```
+
+
+```{r}
+
+
+gmcPvalue(unlist(column_dicts_random_set$column_dict_1850$laplacian),unlist(column_dicts_random_set$column_dict_2000$spectral_diversity), 0)
+```
+
+```{r}
+
+unique_decades <- unique(metrics_df$decade)
+column_dicts <- list()
+
+# Loop through each unique decade and create column dictionaries
+for (decade in unique_decades) {
+  # Filter rows for the current decade
+  subset_df <- metrics_df[metrics_df$decade == decade, ]
+  
+  # Create a column dictionary for this subset
+  column_dict <- lapply(subset_df, as.list)
+  names(column_dict) <- names(subset_df)
+  
+  # Store it in the list with the name for the decade
+  column_dicts[[paste0("column_dict_", decade)]] <- column_dict
+}
+
+
+
+
+for (decade in unique_decades) {
+  # Filter rows for the current decade
+  subset_df <- metrics_df[metrics_df$decade == decade, ]
+  
+  # Create a column dictionary for this subset
+  column_dict <- lapply(subset_df, as.list)
+  names(column_dict) <- names(subset_df)
+  
+  # Store it in the list with the name for the decade
+  column_dicts[[paste0("column_dict_", decade)]] <- column_dict
+}
+
+# Create a list of column dictionaries for metrics_df_random
+unique_decades_random <- unique(metrics_df_random$decade)
+column_dicts_random <- list()
+
+for (decade in unique_decades_random) {
+  # Filter rows for the current decade
+  subset_df_random <- metrics_df_random[metrics_df_random$decade == decade, ]
+  
+  # Create a column dictionary for this subset
+  column_dict_random <- lapply(subset_df_random, as.list)
+  names(column_dict_random) <- names(subset_df_random)
+  
+  # Store it in the list with the name for the decade
+  column_dicts_random[[paste0("column_dict_", decade)]] <- column_dict_random
+}
+
+# View a part of the results
+str(column_dicts)
+str(column_dicts_random)
+
+```
+
+```{r}
+print(names(column_dict))
+xxi <- unlist(column_dict$spectral_diversity)  # Convert the column to a numeric vector
+yyi <- unlist(metrics_df$zipf)     
+```
+
+
+```{r}
+betweenness_1820 = unlist(column_dicts[["column_dict_1820"]]$betweenness)
+
+entropy_1840 = unlist(column_dicts[["column_dict_1840"]]$entropy)
+
+```
+
+
+```{r}
+out= 0
+gmcxgy = gmcpvalue(betweenness_1820, entropy_1840, out)
+
+```
+
+```{r}
+length(unlist(column_dict$zipf))
+gmcxgy
+```
+
+```{r}
+# Define the metric categories
+centrality_measures <- c('betweenness', 'closeness', 'clusterrank',
+    'constraint', 'degree', 'diffusion', 'dmnc',
+    'hubs', 'laplacian', 'lobby', 'mnc',
+    'pagerank', 'topocoefficient', 'transitivity', 'random_measure')
+
+#centrality_measures = c('laplacian')
+
+frequency_measures <- c('zipf')
+
+sd_measures <- c('spectral_diversity', 'nonzero_eigenvalues', 'entropy', 'condition_number')
+
+# Define decades of interest
+decades <- c(1820, 1830)
+
+# Generate column dictionaries
+column_dicts <- list()
+for (decade in decades) {
+  subset_df <- metrics_df[metrics_df$decade == decade, ]
+  column_dict <- lapply(subset_df, as.list)
+  names(column_dict) <- names(subset_df)
+  column_dicts[[paste0("column_dict_", decade)]] <- column_dict
+}
+
+# Prepare to store results
+results <- list()
+
+# Function to compute relationships with error handling
+compute_relationships <- function(measure_1, measure_2, decade_1, decade_2, column_dicts) {
+  # Extract the metrics
+  metric_1 <- unlist(column_dicts[[paste0("column_dict_", decade_1)]][[measure_1]])
+  metric_2 <- unlist(column_dicts[[paste0("column_dict_", decade_2)]][[measure_2]])
+  
+  # Skip if either metric is missing
+  if (is.null(metric_1) || is.null(metric_2)) return(NULL)
+  
+  # Compute GMC value with error handling
+  out <- 0
+  result <- tryCatch(
+    {
+      gmcPvalue(metric_2, metric_1, out)
+    },
+    error = function(e) {
+      print("Computation failed, returning -1")
+      return(-1)
+    }
+  )
+  
+  return(result)
+}
+
+# Iterate over decades and metric combinations
+for (decade_1 in decades) {
+  for (decade_2 in decades) {
+    if (decade_1 == decade_2) next
+    if (decade_1 > decade_2) next
+    for (measure_group_1 in list(centrality_measures, frequency_measures, sd_measures)) {
+      for (measure_1 in measure_group_1) {
+        for (measure_group_2 in list(centrality_measures, frequency_measures, sd_measures)) {
+          for (measure_2 in measure_group_2) {
+            # Skip within-group comparisons (except self-comparisons)
+            if (identical(measure_group_1, measure_group_2) && measure_1 != measure_2) next
+            
+            # Compute the GMC value
+            gmc_value <- compute_relationships(measure_1, measure_2, decade_1, decade_2, column_dicts)
+            
+            # Store the result if a GMC value was computed
+            if (!is.null(gmc_value)) {
+              key <- paste(measure_1, decade_1, "~", measure_2, decade_2, sep = "_")
+              print(key)
+              print(gmc_value)
+              print("-----------")
+              results[[key]] <- gmc_value
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Access results
+print(results)
+
+```
+
+##random word order check:
+
+```{r}
+# Define the metric categories
+centrality_measures <- c('betweenness', 'closeness', 'clusterrank',
+                         'constraint', 'degree', 'diffusion', 'dmnc',
+                         'hubs', 'laplacian', 'lobby', 'mnc',
+                         'pagerank', 'topocoefficient', 'transitivity', 'random_measure')
+
+frequency_measures <- c('zipf')
+
+sd_measures <- c('spectral_diversity', 'nonzero_eigenvalues', 'entropy', 'condition_number')
+
+# Define decades of interest
+decades <- c(1820, 1830)
+
+# Generate column dictionaries
+column_dicts_random <- list()
+for (decade in decades) {
+  subset_df_random <- metrics_df_random[metrics_df_random$decade == decade, ]
+  column_dict_random <- lapply(subset_df_random, as.list)
+  names(column_dict_random) <- names(subset_df_random)
+  column_dicts_random[[paste0("column_dict_", decade)]] <- column_dict_random
+}
+
+# Prepare to store results
+results_random <- list()
+
+# Function to compute relationships with error handling
+compute_relationships_random <- function(measure_1, measure_2, decade_1, decade_2, column_dicts_random) {
+  # Extract the metrics
+  metric_1 <- unlist(column_dicts_random[[paste0("column_dict_", decade_1)]][[measure_1]])
+  metric_2 <- unlist(column_dicts_random[[paste0("column_dict_", decade_2)]][[measure_2]])
+  
+  # Skip if either metric is missing
+  if (is.null(metric_1) || is.null(metric_2)) return(NULL)
+  
+  # Compute GMC value with error handling
+  out <- 0
+  result <- tryCatch(
+    {
+      gmcPvalue(metric_2, metric_1, out)
+    },
+    error = function(e) {
+      print("Computation failed, returning -1")
+      return(-1)
+    }
+  )
+  
+  return(result)
+}
+
+# Iterate over decades and metric combinations
+for (decade_1 in decades) {
+  for (decade_2 in decades) {
+    if (decade_1 == decade_2) next
+    if (decade_1 > decade_2) next
+    for (measure_group_1 in list(centrality_measures, frequency_measures, sd_measures)) {
+      for (measure_1 in measure_group_1) {
+        for (measure_group_2 in list(centrality_measures, frequency_measures, sd_measures)) {
+          for (measure_2 in measure_group_2) {
+            # Skip within-group comparisons (except self-comparisons)
+            if (identical(measure_group_1, measure_group_2) && measure_1 != measure_2) next
+            
+            # Compute the GMC value
+            gmc_value <- compute_relationships_random(measure_1, measure_2, decade_1, decade_2, column_dicts_random)
+            
+            # Store the result if a GMC value was computed
+            if (!is.null(gmc_value)) {
+              key <- paste(measure_1, decade_1, "~", measure_2, decade_2, sep = "_")
+              print(key)
+              print(gmc_value)
+              print("-----------")
+              results_random[[key]] <- gmc_value
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Access results
+print(results_random)
+
+
+```
+
+
+## Systematic computation of GMC relationships by decade
+
+```{r}
+
+plotEffectSizeByDecade <- function(results, response_measure, response_decade, p_cut) {
+  
+  # 1. Identify relevant keys in the results dictionary
+  #    Keys should match the format: "predictorMeasure_predictorDecade_~_responseMeasure_responseDecade"
+  pattern_suffix <- paste0("_~_", response_measure, "_", response_decade)
+  
+  # Find keys where response_measure and response_decade match the input
+  valid_keys <- names(results)[
+    grepl(pattern_suffix, names(results), fixed = TRUE)
+  ]
+  
+  if (length(valid_keys) == 0) {
+    message("No matching keys found for predictors predicting ", response_measure, " in ", response_decade)
+    return(invisible(NULL))
+  }
+  
+  # 2. Extract relevant data: predictor measure, predictor decade, effect size, and p-value
+  predictors_df <- data.frame(
+    predictor_measure = character(),
+    predictor_decade  = numeric(),
+    effect_size       = numeric(),
+    p_value           = numeric(),
+    stringsAsFactors  = FALSE
+  )
+  
+  for (k in valid_keys) {
+    val <- results[[k]]
+    
+    # Ensure the value list is of length >= 3 (effect size, unimportant value, p-value)
+    if (length(val) < 3) next
+    
+    effect_size <- val[which.max(abs(val[1:2]))]
+    p_value     <- val[[3]]
+    
+    if (is.null(p_value) || is.na(p_value)) next
+    
+    # Parse predictor measure and decade from the key
+    split_on_tilde <- strsplit(k, "_~_")[[1]]
+    predictor_info <- strsplit(split_on_tilde[1], "_")[[1]]
+    
+    predictor_measure <- paste0(predictor_info[-length(predictor_info)], collapse = "_")
+    predictor_decade  <- as.numeric(predictor_info[length(predictor_info)])
+    
+    # Only include predictor decades less than the response decade and p-values below threshold
+    if (predictor_decade < as.numeric(response_decade) && p_value < p_cut) {
+      predictors_df <- rbind(predictors_df, data.frame(
+        predictor_measure = predictor_measure,
+        predictor_decade  = predictor_decade,
+        effect_size       = effect_size,
+        p_value           = p_value,
+        stringsAsFactors  = FALSE
+      ))
+    }
+  }
+  
+  # If no valid predictors remain, stop
+  if (nrow(predictors_df) == 0) {
+    message("No predictors passed p-value threshold (p < ", p_cut, ") for decades < ", response_decade)
+    return(invisible(NULL))
+  }
+  
+  # 3. Plot the data
+  ggplot(predictors_df, aes(x = factor(predictor_decade), y = effect_size, fill = predictor_measure)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    theme_minimal() +
+    labs(
+      title = paste0("Predictors of ", response_measure, " in ", response_decade),
+      x = "Predictor Decade",
+      y = "Effect Size",
+      fill = "Predictor Measure"
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+```
+
+
+```{r}
+
+n=4464
+
+
+
+for(s_measure in sd_measures){
+  print(plotEffectSizeByDecade(results, s_measure, 1830, (0.05/n)))
+}
+
+print("----")
+
+for(f_measure in c("zipf")){
+  print(plotEffectSizeByDecade(results, f_measure, 1830, (0.05/n)))
+}
+
+print("----")
+
+
+for(c_measure in centrality_measures){
+  print(plotEffectSizeByDecade(results, c_measure, 1830, (0.05/n)))
+}
+
+
+
+
+
+
+```
+
+
+
+```{r}
+n=4464
+
+
+
+for(s_measure in sd_measures){
+  print(plotEffectSizeByDecade(results_random, s_measure, 1830, (0.05/n)))
+}
+
+print("----")
+
+for(f_measure in c("zipf")){
+  print(plotEffectSizeByDecade(results_random, f_measure, 1830, (0.05/n)))
+}
+
+print("----")
+
+
+for(c_measure in centrality_measures){
+  print(plotEffectSizeByDecade(results_random, c_measure, 1830, (0.05/n)))
+}
+
+
+
+
+
+
+```
+
+
+
+```{r}
+n=4464
+
+
+
+for(s_measure in sd_measures){
+  print(plotEffectSizeByDecade(results_random, s_measure, 1830, (0.05/n)))
+}
+
+print("----")
+
+for(f_measure in c("zipf")){
+  print(plotEffectSizeByDecade(results_random, f_measure, 1830, (0.05/n)))
+}
+
+print("----")
+
+
+for(c_measure in centrality_measures){
+  print(plotEffectSizeByDecade(results_random, c_measure, 1830, (0.05/n)))
+}
+
+
+```
+
