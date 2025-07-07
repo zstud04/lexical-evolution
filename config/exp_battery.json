@@ -1,8 +1,0 @@
-{
-    "cs_1a":{
-        "description": "initial experiment run for CogSci 2025. computing over adjectives in coha_fic 1820-2000",
-        "stimuli":[
-            "coha_fic"
-        ]
-    }
-}
