@@ -7,11 +7,9 @@ if [ -f .env ]; then
 else
     echo "No .env file found. Please enter your tokens."
     read -p "Enter your HF_TOKEN: " HF_TOKEN
-    read -p "Enter your OPENAI_API_TOKEN: " OPENAI_API_TOKEN
 
     cat <<EOF > .env
 export HF_TOKEN="$HF_TOKEN"
-export OPENAI_API_TOKEN="$OPENAI_API_TOKEN"
 EOF
 
     echo ".env file created. Tokens will be loaded automatically next time."

@@ -319,30 +319,53 @@ class EmbeddingsMatrix:
             return np.nan
 
 
+def run_semantic_compiler(word, decade, output_dir="./results"):
+    """
+    Runs the EmbeddingsMatrix analysis and outputs a CSV with key metrics.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    matrix_dir = os.path.join('./staging', word, decade)
+    matrix = EmbeddingsMatrix(matrix_dir, word)
+
+    # Construct results row
+    result = {
+        "word": word,
+        "decade": decade,
+        "n_senses": matrix.n_senses,
+        "spectral_diversity": matrix.spectral_diversity,
+        "entropy": matrix.entropy,
+        "condition_number": matrix.condition_number,
+    }
+
+    df_out = pd.DataFrame([result])
+    out_path = os.path.join(output_dir, f"{word}_{decade}_semantic_metrics.csv")
+    df_out.to_csv(out_path, index=False)
+    print(f"Saved semantic metrics to {out_path}")
+    return df_out
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
    
-    parser = argparse.ArgumentParser(description='Process word path and word name.')
-    parser.add_argument('word_name', type=str, help='The name of the word to look up in the embeddings')
-    parser.add_argument('decade', type=str, help='decade to extract')
+#     parser = argparse.ArgumentParser(description='Process word path and word name.')
+#     parser.add_argument('word_name', type=str, help='The name of the word to look up in the embeddings')
+#     parser.add_argument('decade', type=str, help='decade to extract')
 
-    args = parser.parse_args()   
+#     args = parser.parse_args()   
 
-    word_dir =  f'{WORD_BASE_DIR}/{args.word_name}/{args.decade}'
+#     word_dir =  f'{WORD_BASE_DIR}/{args.word_name}/{args.decade}'
 
-    matrix = EmbeddingsMatrix(word_dir, args.word_name)
+#     matrix = EmbeddingsMatrix(word_dir, args.word_name)
 
-    matrix.pc_analyze_plot()
+#     matrix.pc_analyze_plot()
 
-    print("n senses:")
-    print(matrix.n_senses)
-    print("spectral diversity:")
-    print(matrix.spectral_diversity)
-    print("entropy:")
-    print(matrix.entropy)
+#     print("n senses:")
+#     print(matrix.n_senses)
+#     print("spectral diversity:")
+#     print(matrix.spectral_diversity)
+#     print("entropy:")
+#     print(matrix.entropy)
 
-    matrix.plot_scree()
-    matrix.pca_3d_space_plot()
+#     matrix.plot_scree()
+#     matrix.pca_3d_space_plot()
 
-    matrix.plot_pc_directions()
+#     matrix.plot_pc_directions()
