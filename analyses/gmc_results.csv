@@ -1,0 +1,5 @@
+"key","denote1","denote2","pvalue","warning","t1","t2"
+"betweenness_1820_~_betweenness_1830",0.784875111541794,0.800837160678635,0.613600611127642,"Data contain duplicated values: LSCV is not well-behaved in this case",-0.122295272758404,-0.126134348089552
+"betweenness_1820_~_zipf_1830",0.99,0.60594915219003,0,"Data contain duplicated values: LSCV is not well-behaved in this case",-0.487719999962902,-5.39325164902182e-12
+"zipf_1820_~_betweenness_1830",0.621783559155851,0.0445484102380685,0.966197380429278,"Data contain duplicated values: LSCV is not well-behaved in this case",-5.32692826936987e-12,-0.00679470424885723
+"zipf_1820_~_zipf_1830",0.60810979110211,0.607298272591191,0.050575169967549,NA,-0.174317546392422,-0.139409912338648
